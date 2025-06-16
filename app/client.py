@@ -166,7 +166,7 @@ def client_view():
                         st.rerun()
                 
                 # Display current category
-                current_category = category_names[current_cat_idx]
+                current_category = category_names[current_cat_idx] if category_names else "Strategy & Leadership"
                 st.subheader(f"Category: {current_category}")
                 
                 # Fetch existing choices if this is an existing assessment
@@ -182,11 +182,15 @@ def client_view():
                 
                 # Process questions for the current category
                 with st.form(f"category_{current_cat_idx}_form"):
-                    for question in categories[current_category]:
+                    for i, question in enumerate(categories[current_category]):
                         question_id = question['id']
                         
-                        # Display the question
-                        st.write(f"**Q{question['qsequence']}**: {question['question']}")
+                        # Add spacing between questions (except the first one)
+                        if i > 0:
+                            st.write("")  # Empty line for spacing
+                        
+                        # Display the question with qtype for debugging
+                        st.write(f"**Q{question['qsequence']}**: {question['question']} ({question['qtype']})")
                         
                         # Get answers for this question
                         answers = fetch_answers_by_question(question_id)
@@ -209,31 +213,57 @@ def client_view():
                             if desired_id in answer_ids:
                                 desired_default_idx = answer_ids.index(desired_id)
                         
-                        # Create a clean table layout for answer selection
-                        answer_labels = [f"{a['answer']} (Score: {a['score']})" for a in answers]
+                        # Create container for answers
+                        answer_container = st.container()
                         
-                        # Create two columns for Actual and Required selections
-                        col1, col2 = st.columns(2)
+                        with answer_container:
+                            # Column headers
+                            cols = st.columns([1, 1, 4])
+                            cols[0].write("**Actual**")
+                            cols[1].write("**Required**")
+                            cols[2].write("**Answer Options (Score)**")
+                            
+                            # Display each answer with radio buttons in both columns
+                            for j, answer in enumerate(answers):
+                                cols = st.columns([1, 1, 4])
+                                
+                                # Actual score radio button
+                                with cols[0]:
+                                    actual_selected = st.radio(
+                                        f"actual_{question_id}_{j}",
+                                        [""],
+                                        index=0 if j == actual_default_idx else 0,
+                                        label_visibility="collapsed",
+                                        key=f"actual_{question_id}_{j}"
+                                    )
+                                    if actual_selected:
+                                        st.session_state[f"q_{question_id}_actual_idx"] = j
+                                
+                                # Required score radio button
+                                with cols[1]:
+                                    required_selected = st.radio(
+                                        f"required_{question_id}_{j}",
+                                        [""],
+                                        index=0 if j == desired_default_idx else 0,
+                                        label_visibility="collapsed",
+                                        key=f"required_{question_id}_{j}"
+                                    )
+                                    if required_selected:
+                                        st.session_state[f"q_{question_id}_desired_idx"] = j
+                                
+                                # Answer text and score
+                                with cols[2]:
+                                    st.write(f"{answer['answer']} (Score: {answer['score']})")
                         
-                        with col1:
-                            st.write("**Actual Score:**")
-                            actual_idx = st.radio(
-                                f"Actual_{question_id}",
-                                range(len(answers)),
-                                format_func=lambda i: answer_labels[i],
-                                index=actual_default_idx,
-                                key=f"actual_radio_{question_id}"
-                            )
+                        # Make sure we have default values
+                        if f"q_{question_id}_actual_idx" not in st.session_state:
+                            st.session_state[f"q_{question_id}_actual_idx"] = actual_default_idx
+                        if f"q_{question_id}_desired_idx" not in st.session_state:
+                            st.session_state[f"q_{question_id}_desired_idx"] = desired_default_idx
                         
-                        with col2:
-                            st.write("**Required Score:**")
-                            desired_idx = st.radio(
-                                f"Required_{question_id}",
-                                range(len(answers)),
-                                format_func=lambda i: answer_labels[i],
-                                index=desired_default_idx,
-                                key=f"required_radio_{question_id}"
-                            )
+                        # Get current selections
+                        actual_idx = st.session_state.get(f"q_{question_id}_actual_idx", actual_default_idx)
+                        desired_idx = st.session_state.get(f"q_{question_id}_desired_idx", desired_default_idx)
                         
                         # Store the selected indices in session state
                         st.session_state[f"q_{question_id}_actual_idx"] = actual_idx
