@@ -8,6 +8,7 @@ from app.db import (
     fetch_answers_by_question,
     fetch_assessment_by_id,
     fetch_assessments,
+    fetch_choices_by_assessment,
     fetch_questions_by_type,
     save_choice,
 )
@@ -72,25 +73,18 @@ def client_view():
         if existing_assessments:
             st.subheader("Existing Assessments")
             
-            # Create a table to display assessments with action buttons
-            cols = st.columns([3, 1, 1])
-            cols[0].write("**Assessment Name (Type)**")
-            cols[1].write("**Edit**")
-            cols[2].write("**Delete**")
-            
             for assessment in existing_assessments:
-                cols = st.columns([3, 1, 1])
-                cols[0].write(f"{assessment['name']} ({assessment['qtype']} type)")
+                cols = st.columns([4, 1])
                 
-                # Edit button
-                if cols[1].button("Edit", key=f"edit_{assessment['id']}"):
+                # Make the assessment name clickable
+                if cols[0].button(f"{assessment['name']} ({assessment['qtype']} type)", key=f"select_{assessment['id']}"):
                     st.session_state['assessment_id'] = assessment['id']
                     st.session_state['assessment_name'] = assessment['name']
                     st.session_state['assessment_type'] = assessment['qtype']
                     st.rerun()
                 
                 # Delete button
-                if cols[2].button("Delete", key=f"delete_{assessment['id']}"):
+                if cols[1].button("Delete", key=f"delete_{assessment['id']}"):
                     if st.session_state.get('confirm_delete_assessment') == assessment['id']:
                         delete_assessment(assessment['id'])
                         st.success(f"Assessment '{assessment['name']}' deleted successfully!")
@@ -175,6 +169,17 @@ def client_view():
                 current_category = category_names[current_cat_idx]
                 st.subheader(f"Category: {current_category}")
                 
+                # Fetch existing choices if this is an existing assessment
+                existing_choices = {}
+                if 'assessment_id' in st.session_state:
+                    choices = fetch_choices_by_assessment(st.session_state['assessment_id'])
+                    for choice in choices:
+                        question_id = choice['question_id']
+                        existing_choices[question_id] = {
+                            'actual': choice['answer_id_actual'],
+                            'desired': choice['answer_id_desired']
+                        }
+                
                 # Process questions for the current category
                 with st.form(f"category_{current_cat_idx}_form"):
                     for question in categories[current_category]:
@@ -189,34 +194,52 @@ def client_view():
                             st.warning(f"No answers found for question ID {question_id}.")
                             continue
                         
-                        # Create radio buttons for actual and desired answers
-                        answer_options = [a['answer'] for a in answers]
                         answer_ids = [a['id'] for a in answers]
                         
-                        # Format the options to show the score
-                        answer_display = [f"{a['answer']} (Score: {a['score']})" for a in answers]
+                        # Get index of existing answers if they exist
+                        actual_default_idx = 0
+                        desired_default_idx = 0
                         
+                        if question_id in existing_choices:
+                            actual_id = existing_choices[question_id]['actual']
+                            desired_id = existing_choices[question_id]['desired']
+                            
+                            if actual_id in answer_ids:
+                                actual_default_idx = answer_ids.index(actual_id)
+                            if desired_id in answer_ids:
+                                desired_default_idx = answer_ids.index(desired_id)
+                        
+                        # Create a clean table layout for answer selection
+                        answer_labels = [f"{a['answer']} (Score: {a['score']})" for a in answers]
+                        
+                        # Create two columns for Actual and Required selections
                         col1, col2 = st.columns(2)
+                        
                         with col1:
-                            st.write("Actual:")
+                            st.write("**Actual Score:**")
                             actual_idx = st.radio(
-                                f"actual_{question_id}",
-                                range(len(answer_options)),
-                                format_func=lambda i: answer_display[i],
-                                key=f"actual_{question_id}",
-                                label_visibility="collapsed"
+                                f"Actual_{question_id}",
+                                range(len(answers)),
+                                format_func=lambda i: answer_labels[i],
+                                index=actual_default_idx,
+                                key=f"actual_radio_{question_id}"
                             )
                         
                         with col2:
-                            st.write("Required:")
+                            st.write("**Required Score:**")
                             desired_idx = st.radio(
-                                f"desired_{question_id}",
-                                range(len(answer_options)),
-                                format_func=lambda i: answer_display[i],
-                                key=f"desired_{question_id}",
-                                label_visibility="collapsed"
+                                f"Required_{question_id}",
+                                range(len(answers)),
+                                format_func=lambda i: answer_labels[i],
+                                index=desired_default_idx,
+                                key=f"required_radio_{question_id}"
                             )
                         
+                        # Store the selected indices in session state
+                        st.session_state[f"q_{question_id}_actual_idx"] = actual_idx
+                        st.session_state[f"q_{question_id}_desired_idx"] = desired_idx
+                        
+                        # Store the selected answer IDs
                         st.session_state[f"q_{question_id}_actual"] = answer_ids[actual_idx]
                         st.session_state[f"q_{question_id}_desired"] = answer_ids[desired_idx]
                     

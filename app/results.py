@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -58,10 +57,13 @@ def results_view():
     st.subheader(f"Client: {client_names[selected_client_idx]}")
     st.subheader(f"Assessment: {assessment_names[selected_assessment_idx]}")
     
+    # Calculate gap for each row (gap is 0 when actual >= desired)
+    df['gap'] = df.apply(lambda row: max(0, row['desired_score'] - row['actual_score']), axis=1)
+    
     # Calculate overall scores
     total_actual = df['actual_score'].sum()
     total_desired = df['desired_score'].sum()
-    total_gap = total_desired - total_actual
+    total_gap = df['gap'].sum()
     
     # Display overall scores
     col1, col2, col3 = st.columns(3)
@@ -75,10 +77,11 @@ def results_view():
     # Group by category and calculate metrics
     category_df = df.groupby('category').agg({
         'actual_score': 'sum',
-        'desired_score': 'sum'
+        'desired_score': 'sum',
+        'gap': 'sum'
     }).reset_index()
     
-    category_df['gap'] = category_df['desired_score'] - category_df['actual_score']
+    # Calculate gap percentage correctly (sum of gaps / sum of desired)
     category_df['gap_percentage'] = (category_df['gap'] / category_df['desired_score'] * 100).round(1)
     
     # Sort by gap (largest first)
@@ -137,6 +140,9 @@ def results_view():
     # Detailed question analysis
     st.header("Detailed Question Analysis")
     
+    # Option to show only gaps (questions where desired > actual)
+    show_only_gaps = st.checkbox("Show only gaps (questions where Required > Actual)", value=True)
+    
     # Select a category to view detailed questions
     selected_category = st.selectbox(
         "Select Category for Detailed Analysis:",
@@ -146,8 +152,9 @@ def results_view():
     # Filter questions by selected category
     category_questions = df[df['category'] == selected_category]
     
-    # Add gap column
-    category_questions['gap'] = category_questions['desired_score'] - category_questions['actual_score']
+    # Filter to show only gaps if checkbox is checked
+    if show_only_gaps:
+        category_questions = category_questions[category_questions['gap'] > 0]
     
     # Sort by gap (largest first)
     category_questions = category_questions.sort_values('gap', ascending=False)

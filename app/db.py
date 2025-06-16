@@ -217,3 +217,19 @@ def fetch_assessment_by_id(assessment_id):
     """, (assessment_id,)).fetchone()
     conn.close()
     return assessment
+
+def fetch_choices_by_assessment(assessment_id):
+    """Fetch choices for a specific assessment."""
+    conn = get_db_connection()
+    choices = conn.execute("""
+        SELECT 
+            c.id, c.assessment_id, c.answer_id_desired, c.answer_id_actual,
+            a_actual.question_id,
+            a_actual.score as actual_score, a_desired.score as desired_score
+        FROM choices c
+        JOIN answers a_actual ON c.answer_id_actual = a_actual.id
+        JOIN answers a_desired ON c.answer_id_desired = a_desired.id
+        WHERE c.assessment_id = ?
+    """, (assessment_id,)).fetchall()
+    conn.close()
+    return choices
