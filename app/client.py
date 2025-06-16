@@ -189,8 +189,8 @@ def client_view():
                         if i > 0:
                             st.write("")  # Empty line for spacing
                         
-                        # Display the question with qtype for debugging
-                        st.write(f"**Q{question['qsequence']}**: {question['question']} ({question['qtype']})")
+                        # Display the question without qtype
+                        st.write(f"**Q{question['qsequence']}**: {question['question']}")
                         
                         # Get answers for this question
                         answers = fetch_answers_by_question(question_id)
@@ -213,61 +213,37 @@ def client_view():
                             if desired_id in answer_ids:
                                 desired_default_idx = answer_ids.index(desired_id)
                         
-                        # Create container for answers
+                        # Create container for answers with smaller vertical spacing
                         answer_container = st.container()
                         
                         with answer_container:
-                            # Column headers
-                            cols = st.columns([1, 1, 4])
-                            cols[0].write("**Actual**")
-                            cols[1].write("**Required**")
-                            cols[2].write("**Answer Options (Score)**")
-                            
-                            # Display each answer with radio buttons in both columns
-                            for j, answer in enumerate(answers):
-                                cols = st.columns([1, 1, 4])
-                                
-                                # Actual score radio button
-                                with cols[0]:
-                                    actual_selected = st.radio(
-                                        f"actual_{question_id}_{j}",
-                                        [""],
-                                        index=0 if j == actual_default_idx else 0,
-                                        label_visibility="collapsed",
-                                        key=f"actual_{question_id}_{j}"
-                                    )
-                                    if actual_selected:
-                                        st.session_state[f"q_{question_id}_actual_idx"] = j
-                                
-                                # Required score radio button
-                                with cols[1]:
-                                    required_selected = st.radio(
-                                        f"required_{question_id}_{j}",
-                                        [""],
-                                        index=0 if j == desired_default_idx else 0,
-                                        label_visibility="collapsed",
-                                        key=f"required_{question_id}_{j}"
-                                    )
-                                    if required_selected:
-                                        st.session_state[f"q_{question_id}_desired_idx"] = j
-                                
-                                # Answer text and score
-                                with cols[2]:
-                                    st.write(f"{answer['answer']} (Score: {answer['score']})")
+                            # Compact two-column layout: one radio group for 'actual', one for 'required', both horizontal
+                            answer_labels = [f"{a['answer']} ({a['score']})" for a in answers]
+                            cols = st.columns([1, 1])
+                            with cols[0]:
+                                actual_idx = st.radio(
+                                    label="Actual",
+                                    options=range(len(answers)),
+                                    index=actual_default_idx,
+                                    key=f"actual_radio_{question_id}",
+                                    horizontal=True,
+                                    format_func=lambda x: answer_labels[x]
+                                )
+                            with cols[1]:
+                                required_idx = st.radio(
+                                    label="Required",
+                                    options=range(len(answers)),
+                                    index=desired_default_idx,
+                                    key=f"required_radio_{question_id}",
+                                    horizontal=True,
+                                    format_func=lambda x: answer_labels[x]
+                                )
+                            st.session_state[f"q_{question_id}_actual_idx"] = actual_idx
+                            st.session_state[f"q_{question_id}_desired_idx"] = required_idx
                         
-                        # Make sure we have default values
-                        if f"q_{question_id}_actual_idx" not in st.session_state:
-                            st.session_state[f"q_{question_id}_actual_idx"] = actual_default_idx
-                        if f"q_{question_id}_desired_idx" not in st.session_state:
-                            st.session_state[f"q_{question_id}_desired_idx"] = desired_default_idx
-                        
-                        # Get current selections
+                        # Get the current actual_idx and desired_idx values from session state
                         actual_idx = st.session_state.get(f"q_{question_id}_actual_idx", actual_default_idx)
                         desired_idx = st.session_state.get(f"q_{question_id}_desired_idx", desired_default_idx)
-                        
-                        # Store the selected indices in session state
-                        st.session_state[f"q_{question_id}_actual_idx"] = actual_idx
-                        st.session_state[f"q_{question_id}_desired_idx"] = desired_idx
                         
                         # Store the selected answer IDs
                         st.session_state[f"q_{question_id}_actual"] = answer_ids[actual_idx]
