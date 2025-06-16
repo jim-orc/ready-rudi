@@ -195,3 +195,25 @@ def fetch_all_questions():
     """).fetchall()
     conn.close()
     return questions
+
+def delete_assessment(assessment_id):
+    """Delete an assessment and its associated choices."""
+    conn = get_db_connection()
+    # First delete associated choices
+    conn.execute("DELETE FROM choices WHERE assessment_id=?", (assessment_id,))
+    # Then delete the assessment
+    conn.execute("DELETE FROM assessments WHERE id=?", (assessment_id,))
+    conn.commit()
+    conn.close()
+
+def fetch_assessment_by_id(assessment_id):
+    """Fetch assessment details by ID."""
+    conn = get_db_connection()
+    assessment = conn.execute("""
+        SELECT a.id, a.qtype, a.name, a.client_id, c.name as client_name
+        FROM assessments a
+        JOIN clients c ON a.client_id = c.id
+        WHERE a.id = ?
+    """, (assessment_id,)).fetchone()
+    conn.close()
+    return assessment

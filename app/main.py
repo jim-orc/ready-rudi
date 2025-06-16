@@ -1,14 +1,9 @@
-import sqlite3
-from pathlib import Path
-
-import pandas as pd
 import streamlit as st
 
 from app.admin import admin_view
 from app.client import client_view
 
 # Import app modules
-from app.db import get_db_connection
 from app.results import results_view
 
 # Set page configuration
@@ -27,7 +22,7 @@ def main():
     # Navigation options
     app_mode = st.sidebar.radio(
         "Select Mode:",
-        options=["Client Assessment", "Admin Panel", "Results Dashboard"],
+        options=["Client Assessment", "Results Dashboard", "Admin Panel"],
         index=0
     )
     

@@ -3,8 +3,10 @@ import streamlit as st
 from app.db import (
     add_client,
     create_assessment,
+    delete_assessment,
     fetch_all_clients,
     fetch_answers_by_question,
+    fetch_assessment_by_id,
     fetch_assessments,
     fetch_questions_by_type,
     save_choice,
@@ -69,8 +71,41 @@ def client_view():
         existing_assessments = fetch_assessments(client_id)
         if existing_assessments:
             st.subheader("Existing Assessments")
+            
+            # Create a table to display assessments with action buttons
+            cols = st.columns([3, 1, 1])
+            cols[0].write("**Assessment Name (Type)**")
+            cols[1].write("**Edit**")
+            cols[2].write("**Delete**")
+            
             for assessment in existing_assessments:
-                st.write(f"{assessment['name']} ({assessment['qtype']} type)")
+                cols = st.columns([3, 1, 1])
+                cols[0].write(f"{assessment['name']} ({assessment['qtype']} type)")
+                
+                # Edit button
+                if cols[1].button("Edit", key=f"edit_{assessment['id']}"):
+                    st.session_state['assessment_id'] = assessment['id']
+                    st.session_state['assessment_name'] = assessment['name']
+                    st.session_state['assessment_type'] = assessment['qtype']
+                    st.rerun()
+                
+                # Delete button
+                if cols[2].button("Delete", key=f"delete_{assessment['id']}"):
+                    if st.session_state.get('confirm_delete_assessment') == assessment['id']:
+                        delete_assessment(assessment['id'])
+                        st.success(f"Assessment '{assessment['name']}' deleted successfully!")
+                        # Clear the confirmation state
+                        if 'confirm_delete_assessment' in st.session_state:
+                            del st.session_state['confirm_delete_assessment']
+                        # Also clear assessment state if the deleted assessment was selected
+                        if st.session_state.get('assessment_id') == assessment['id']:
+                            for key in ['assessment_id', 'assessment_name', 'assessment_type', 'progress']:
+                                if key in st.session_state:
+                                    del st.session_state[key]
+                        st.rerun()
+                    else:
+                        st.session_state['confirm_delete_assessment'] = assessment['id']
+                        st.warning(f"Click 'Delete' again to confirm deletion of assessment '{assessment['name']}'.")
         
         # Form to create a new assessment
         with st.form("new_assessment_form"):
