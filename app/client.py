@@ -6,7 +6,6 @@ from app.db import (
     delete_assessment,
     fetch_all_clients,
     fetch_answers_by_question,
-    fetch_assessment_by_id,
     fetch_assessments,
     fetch_choices_by_assessment,
     fetch_questions_by_type,
@@ -260,7 +259,7 @@ def client_view():
                             desired_answer_id = st.session_state.get(f"q_{question_id}_desired")
                             
                             if actual_answer_id and desired_answer_id:
-                                save_choice(assessment_id, desired_answer_id, actual_answer_id)
+                                save_choice(assessment_id, question_id, desired_answer_id, actual_answer_id)
                                 st.session_state['progress']['completed_questions'].add(question_id)
                         
                         st.success(f"Answers for {current_category} saved successfully!")

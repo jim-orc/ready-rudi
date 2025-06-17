@@ -69,13 +69,16 @@ def create_assessment(client_id, qtype, name):
     conn.close()
     return assessment_id
 
-def save_choice(assessment_id, answer_id_desired, answer_id_actual):
-    """Save a choice for an assessment."""
+def save_choice(assessment_id, question_id, answer_id_desired, answer_id_actual):
+    """Save a choice for an assessment. Updates existing choice if one exists for the assessment and question."""
     conn = get_db_connection()
-    conn.execute(
-        "INSERT INTO choices (assessment_id, answer_id_desired, answer_id_actual) VALUES (?, ?, ?)",
-        (assessment_id, answer_id_desired, answer_id_actual)
-    )
+    conn.execute("""
+        INSERT INTO choices (assessment_id, question_id, answer_id_desired, answer_id_actual)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(assessment_id, question_id) DO UPDATE SET
+        answer_id_desired = excluded.answer_id_desired,
+        answer_id_actual = excluded.answer_id_actual
+    """, (assessment_id, question_id, answer_id_desired, answer_id_actual))
     conn.commit()
     conn.close()
 
