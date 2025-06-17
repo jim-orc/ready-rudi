@@ -18,13 +18,30 @@ def results_view():
     client_names = [client['name'] for client in clients]
     client_ids = [client['id'] for client in clients]
     
+    # Determine default index for client selectbox based on session state
+    default_selected_client_index = 0
+    if 'client_id' in st.session_state and st.session_state['client_id'] in client_ids:
+        default_selected_client_index = client_ids.index(st.session_state['client_id'])
+    
     selected_client_idx = st.selectbox(
         "Select Client:",
         range(len(client_names)),
-        format_func=lambda i: client_names[i]
+        format_func=lambda i: client_names[i],
+        index=default_selected_client_index, # Set default index
+        key="results_client_selectbox" # Added key for persistence
     )
     
     client_id = client_ids[selected_client_idx]
+    # Update session state if the selection changes
+    if st.session_state.get('client_id') != client_id:
+        st.session_state['client_id'] = client_id
+        st.session_state['client_name'] = client_names[selected_client_idx]
+        # Clear assessment details when client changes in results view as well
+        # This might be optional depending on desired UX, but good for consistency
+        for key_to_clear in ['assessment_id', 'assessment_name', 'assessment_type']:
+            if key_to_clear in st.session_state:
+                del st.session_state[key_to_clear]
+        st.rerun()
     
     # Step 2: Select Assessment
     assessments = fetch_assessments(client_id)

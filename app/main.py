@@ -2,7 +2,6 @@ import streamlit as st
 
 from app.admin import admin_view
 from app.client import client_view
-
 # Import app modules
 from app.results import results_view
 
@@ -11,7 +10,7 @@ st.set_page_config(
     page_title="Ready Rudi Assessment Tool",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 def main():

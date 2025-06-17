@@ -26,25 +26,47 @@ def client_view():
         client_names = [client['name'] for client in clients]
         client_ids = [client['id'] for client in clients]
         
+        # Determine default index for client_option radio based on session state or client list
+        default_client_option_index = 0
+        if 'client_option' in st.session_state:
+            default_client_option_index = ["Select Existing Client", "Create New Client"].index(st.session_state['client_option'])
+        elif not clients:
+            default_client_option_index = 1
+
         # Radio button to select existing client or create new one
         client_option = st.radio(
             "Choose an option:",
             ["Select Existing Client", "Create New Client"],
-            index=0 if clients else 1
+            index=default_client_option_index,
+            key="client_option_radio" # Added key for persistence
         )
+        st.session_state['client_option'] = client_option # Store the choice in session state
         
         client_id = None
         
         if client_option == "Select Existing Client" and clients:
+            # Determine default index for client selectbox based on session state
+            default_selected_client_index = 0
+            if 'client_id' in st.session_state and st.session_state['client_id'] in client_ids:
+                default_selected_client_index = client_ids.index(st.session_state['client_id'])
+            
             # Display a selectbox with client names
             selected_index = st.selectbox(
                 "Select Client:", 
                 range(len(client_names)),
-                format_func=lambda i: client_names[i]
+                format_func=lambda i: client_names[i],
+                index=default_selected_client_index, # Set default index
+                key="client_selectbox" # Added key for persistence
             )
             client_id = client_ids[selected_index]
-            st.session_state['client_id'] = client_id
-            st.session_state['client_name'] = client_names[selected_index]
+            if st.session_state.get('client_id') != client_id: # Update session state only if changed
+                st.session_state['client_id'] = client_id
+                st.session_state['client_name'] = client_names[selected_index]
+                # Clear assessment details when client changes
+                for key_to_clear in ['assessment_id', 'assessment_name', 'assessment_type', 'progress']:
+                    if key_to_clear in st.session_state:
+                        del st.session_state[key_to_clear]
+                st.rerun() # Rerun to reflect changes and clear dependent selections
             
         elif client_option == "Create New Client" or not clients:
             # Form to create a new client
